@@ -1,0 +1,70 @@
+#!/bin/sh
+# Create ZASSP (SRLF shared print) OCLC LHRs
+# Tweaked for WEST/PAPR project: same extract, different names, send to CDL
+
+# Get full voyager environment
+BIN=/opt/local/bin
+. ${BIN}/vger_getenv
+
+# Everything happens here
+LHR=/m1/voyager/ucladb/local/lhr/zassp
+cd ${LHR}
+
+# Variables
+BASE=${LHR}/zassp_lhr_serials
+SQLFILE=${BASE}.sql
+DATAFILE=${SQLFILE}.out
+MFHDFILE=${BASE}.mfhds
+
+# Use date if provided, else default to extracting all
+# LASTDATE = last date records were edited, in YYYYMMDD
+if [ -n "$1" ]; then
+  LASTDATE=$1
+  # Allow full extract of all records by using date prior to Voyager migration
+  if [ "${LASTDATE}" = "ALL" ]; then
+    LASTDATE=20000101
+  fi
+else
+  LASTDATE=20000101
+fi
+
+echo "Extracting LHRs for records updated on/after ${LASTDATE}..."
+
+# Run query to get necessary data
+${BIN}/vger_sqlplus_run ucla_preaddb ${SQLFILE} ${LASTDATE}
+
+# Exit if no data from query
+if [ ! -s ${DATAFILE} ]; then
+  echo "ERROR: no data in ${DATAFILE} from query - exiting"
+  exit 1
+fi
+
+# Extract Voyager holdings records, using the list of ids
+/m1/voyager/ucladb/sbin/Pmarcexport \
+  -rH \
+  -mM \
+  -t${DATAFILE} \
+  -o${MFHDFILE}
+
+# Create OCLC LHRs from the extracted Voyager holdings records
+# Results are in zassp_lhrs.mrc, name set by make_zassp_lhrs.pl
+${LHR}/make_zassp_lhrs.pl ${DATAFILE} ${MFHDFILE}
+
+# Stats
+${BIN}/marcsplit -c zassp_lhrs.mrc
+
+# For WEST/PAPR
+PAPRFILE=ZASSP.voyager.archived.`date "+%Y%m%d"`
+mv zassp_lhrs.mrc ${PAPRFILE}
+
+# FTP the files to CDL
+(
+  echo "bin"
+  echo "mput ${PAPRFILE}"
+  echo "dir"
+  echo "quit"
+) | ftp -i -v 184.72.41.135
+
+# Cleanup
+mv ${PAPRFILE} ${LHR}/archive/
+rm ${DATAFILE} ${MFHDFILE}
