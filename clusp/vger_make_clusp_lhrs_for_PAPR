@@ -3,7 +3,7 @@
 # Tweaked for WEST/PAPR project: same extract, different names, send to CDL
 
 # Get full voyager environment
-BIN=/opt/local/bin
+BIN=/usr/local/bin
 . ${BIN}/vger_getenv
 
 # Everything happens here
