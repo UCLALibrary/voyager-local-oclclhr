@@ -2,9 +2,8 @@
 # Create ZASSP (SRLF shared print) OCLC LHRs
 # Tweaked for WEST/PAPR project: same extract, different names, send to CDL
 
-# Get full voyager environment
-BIN=/usr/local/bin
-. ${BIN}/vger_getenv
+# Get voyager environment, for vars and for cron
+. `echo $HOME | sed "s/$LOGNAME/voyager/"`/.profile.local
 
 # Everything happens here
 LHR=/m1/voyager/ucladb/local/lhr/zassp
@@ -31,7 +30,7 @@ fi
 echo "Extracting LHRs for records updated on/after ${LASTDATE}..."
 
 # Run query to get necessary data
-${BIN}/vger_sqlplus_run ucla_preaddb ${SQLFILE} ${LASTDATE}
+${VGER_SCRIPT}/vger_sqlplus_run ucla_preaddb ${SQLFILE} ${LASTDATE}
 
 # Exit if no data from query
 if [ ! -s ${DATAFILE} ]; then
