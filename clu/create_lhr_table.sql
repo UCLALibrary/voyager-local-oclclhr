@@ -1,7 +1,9 @@
--- &1: last date records were updated (YYYYMMDD)
-define last_date = &1; 
+define last_date = &1;
 
 drop table vger_report.tmp_lhr_ids;
+
+-- Requires other tables in vger_report, which are rebuilt
+-- daily via vger_rebuild_cataloging_reports
 
 create table vger_report.tmp_lhr_ids as
 with updates as (
@@ -16,28 +18,25 @@ with updates as (
   where mh.action_date >= to_date('&last_date', 'YYYYMMDD')
   and mh.operator_id != 'nomelvyl'
 )
-, multiple_oclc as (
-  select bib_id
-  from ucladb.bib_index
-  where index_code = '0350'
-  and normal_heading like 'UCOCLC%'
-  group by bib_id
-  having count(*) > 1
+, one_oclc as (
+  select bib_id from updates
+  minus
+  select bib_id from vger_report.rpt_multiple_ucoclc
 )
 , bibs as (
-  select 
-    bm.bib_id
+  -- Force index use for performance, else wildcard in normal_heading causes problems
+  select /*+ index(bi BIB_INDEX_BIB_ID_IDX) */
+    oo.bib_id
   , replace(bi.normal_heading, 'UCOCLC', '') as oclc
-  from updates u
-  inner join ucladb.bib_master bm on u.bib_id = bm.bib_id
-  inner join ucladb.bib_text bt on bm.bib_id = bt.bib_id
-  inner join ucladb.bib_index bi 
-    on bt.bib_id = bi.bib_id
+  from one_oclc oo
+  inner join ucladb.bib_master bm on oo.bib_id = bm.bib_id
+  inner join ucladb.bib_text bt on oo.bib_id = bt.bib_id
+  inner join ucladb.bib_index bi
+    on oo.bib_id = bi.bib_id
     and bi.index_code = '0350'
-    and bi.normal_heading like 'UCOCLC%' 
+    and bi.normal_heading like 'UCOCLC%'
   where bm.suppress_in_opac = 'N'
   and bt.bib_format like '%s'
-  and not exists (select * from multiple_oclc where bib_id = bt.bib_id) 
 )
 , ok_910 as (
   select
@@ -139,3 +138,4 @@ select
 , display_call_no
 from internet_bibs
 ;
+
