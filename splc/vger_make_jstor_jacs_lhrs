@@ -1,0 +1,69 @@
+#!/bin/sh
+# Create srucl2 (SRLF shared print JACS/JSTOR) OCLC LHRs
+# Based on WEST/PAPR scripts.
+
+# Get voyager environment, for vars and for cron
+. `echo $HOME | sed "s/$LOGNAME/voyager/"`/.profile.local
+
+# Everything happens here
+LHR=/m1/voyager/ucladb/local/lhr/splc
+cd ${LHR}
+
+# Variables
+BASE=${LHR}/jstor_jacs_lhrs
+SQLFILE=${BASE}.sql
+DATAFILE=${SQLFILE}.out
+MFHDFILE=${BASE}.mfhds
+
+# Use date if provided, else default to extracting all
+# LASTDATE = last date records were edited, in YYYYMMDD
+if [ -n "$1" ]; then
+  LASTDATE=$1
+  # Allow full extract of all records by using date prior to Voyager migration
+  if [ "${LASTDATE}" = "ALL" ]; then
+    LASTDATE=20000101
+  fi
+else
+  LASTDATE=20000101
+fi
+
+echo "Extracting LHRs for records updated on/after ${LASTDATE}..."
+
+# Run query to get necessary data
+${VGER_SCRIPT}/vger_sqlplus_run ucla_preaddb ${SQLFILE} ${LASTDATE}
+
+# Exit if no data from query
+if [ ! -s ${DATAFILE} ]; then
+  echo "ERROR: no data in ${DATAFILE} from query - exiting"
+  exit 1
+fi
+
+# Extract Voyager holdings records, using the list of ids
+/m1/voyager/ucladb/sbin/Pmarcexport \
+  -rH \
+  -mM \
+  -t${DATAFILE} \
+  -o${MFHDFILE}
+
+# Create OCLC LHRs from the extracted Voyager holdings records
+# Results are in jstor_jacs_lhrs.mrc, name set by make_jstor_jacs_lhrs.pl
+${LHR}/make_jstor_jacs_lhrs.pl ${DATAFILE} ${MFHDFILE}
+
+# Stats
+${BIN}/marcsplit -c jstor_jacs_lhrs.mrc
+
+# Rename for CDL
+CDLFILE=ZASSP.voyager.archived.UCSP.`date "+%Y%m%d"`
+mv jstor_jacs_lhrs.mrc ${CDLFILE}
+
+# FTP the files to CDL
+(
+  echo "bin"
+  echo "mput ${CDLFILE}"
+  echo "dir"
+  echo "quit"
+) | ftp -i -v 184.72.41.135
+
+# Cleanup
+mv ${CDLFILE} ${LHR}/archive/
+rm ${DATAFILE} ${MFHDFILE}
