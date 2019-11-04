@@ -10,8 +10,8 @@ with d as (
   from tmp_lhr_ids b
   where source = 'print'
   and location_code not like 'sr%'
-  and display_call_no is not null
-  and upper(display_call_no) not like '%SUPPRESS%'
+  and (display_call_no is not null or location_code like 'er%') -- ERR holdings do not require call number
+  -- and upper(display_call_no) not like '%SUPPRESS%' -- 20191104: Can we start leaving this out - fix, instead of working around errors?
   union all
   select distinct --needed due to item-level join for restricting to UCLA items
     b.*

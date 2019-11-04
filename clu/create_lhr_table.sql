@@ -46,6 +46,7 @@ with updates as (
 )
 , print_bibs as (
   -- Bib record has at least one unsuppressed holdings with physical location and a call number
+  -- Exclude ERR holdings, which have different requirements - we'll get them later in the query.
   select
     b.bib_id
   , mm.mfhd_id
@@ -61,10 +62,26 @@ with updates as (
   and l.location_code != 'in'
   and l.location_code not like 'sr%' -- SRLF locs have diff criteria, below
   and l.location_code not like '%wt' -- WEST shared print locs
+  and l.location_code not like 'er%' -- ERR holdings
   and l.suppress_in_opac = 'N'
   and mm.suppress_in_opac = 'N'
   and mm.normalized_call_no is not null
   and mm.normalized_call_no not like 'SUPPRESSED%' -- shouldn't be necessary but a few hundred mfhds say otherwise
+  union
+  -- ERR print holdings: these don't require call number
+  select
+    b.bib_id
+  , mm.mfhd_id
+  , b.oclc
+  , l.location_code
+  , mm.display_call_no
+  from bibs b
+  inner join ucladb.bib_mfhd bm on b.bib_id = bm.bib_id
+  inner join ucladb.mfhd_master mm on bm.mfhd_id = mm.mfhd_id
+  inner join ucladb.location l on mm.location_id = l.location_id
+  inner join ok_910 o on b.bib_id = o.bib_id
+  where l.location_code like 'er%'
+  and l.location_code != 'ersr' -- Exclude ERR SRLF ghost records
   union
   -- Bib record has a 910 $a with other than ACQ or MARS, via ok_910 above
   select
