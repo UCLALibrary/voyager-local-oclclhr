@@ -8,7 +8,7 @@ with west as (
     record_id as mfhd_id
   from vger_subfields.ucladb_mfhd_subfield
   where tag = '583f'
-  and subfield = 'WEST'
+  and subfield in ('WEST', 'UCL Shared Print')
 )
 , updates as (
   -- West holdings updated since last_date
@@ -44,7 +44,7 @@ inner join ucladb.location l on mm.location_id = l.location_id
 inner join ucladb.bib_mfhd bm on mm.mfhd_id = bm.mfhd_id
 inner join ucladb.bib_text bt on bm.bib_id = bt.bib_id
 inner join ucladb.bib_master br on bm.bib_id = br.bib_id
-where l.location_code = 'srbuo'
+where l.location_code like 'sr%'
 and bt.bib_format like '%s'
 and exists (
   select *

@@ -17,6 +17,13 @@ with updates as (
   where mh.action_date >= to_date('&last_date', 'YYYYMMDD')
   and mh.operator_id != 'nomelvyl'
 )
+, west as (
+  select distinct
+    record_id as mfhd_id
+  from vger_subfields.ucladb_mfhd_subfield
+  where tag = '583f'
+  and subfield in ('WEST', 'UCL Shared Print')
+)
 select /*+ index(bi BIB_INDEX_BIB_ID_IDX) */
     bm.mfhd_id
  || chr(9)
@@ -35,22 +42,17 @@ where (l.location_code = 'sr' or l.location_code like 'srucl%')
 and mm.suppress_in_opac = 'N'
 and br.suppress_in_opac = 'N'
 and bt.bib_format like '%s'
--- Must have OCLC number
-/*
-and exists (
-  select *
-  from bib_index
-  where bib_id = bm.bib_id
-  and index_code = '0350'
-  and normal_heading like 'UCOCLC%'
-)
-*/
 -- MFHD must have items - hundreds don't
 and exists (
   select *
   from mfhd_item
   where mfhd_id = mm.mfhd_id
 )
+-- No mfhd 853 $f, or no ZASSP/WEST value
+and not exists (
+  select *
+  from west
+  where mfhd_id = bm.mfhd_id
+)
 order by bm.mfhd_id
 ;
-
