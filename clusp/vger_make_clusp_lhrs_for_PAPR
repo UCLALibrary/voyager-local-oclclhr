@@ -56,13 +56,7 @@ ${BIN}/marcsplit -c clusp_lhrs.mrc
 PAPRFILE=CLUSP.voyager.archived.`date "+%Y%m%d"`
 mv clusp_lhrs.mrc ${PAPRFILE}
 
-# FTP the files to CDL
-(
-  echo "bin"
-  echo "mput ${PAPRFILE}"
-  echo "dir"
-  echo "quit"
-) | ftp -i -v 184.72.41.135
+echo "Upload ${PAPRFILE} to AGUA"
 
 # Cleanup
 mv ${PAPRFILE} ${LHR}/archive/

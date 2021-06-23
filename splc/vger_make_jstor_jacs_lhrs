@@ -53,16 +53,10 @@ ${LHR}/make_jstor_jacs_lhrs.pl ${DATAFILE} ${MFHDFILE}
 ${BIN}/marcsplit -c jstor_jacs_lhrs.mrc
 
 # Rename for CDL
-CDLFILE=ZASSP.voyager.archived.UCSP.`date "+%Y%m%d"`
+CDLFILE=ZASSP.voyager.archived.JACS.`date "+%Y%m%d"`
 mv jstor_jacs_lhrs.mrc ${CDLFILE}
 
-# FTP the files to CDL
-(
-  echo "bin"
-  echo "mput ${CDLFILE}"
-  echo "dir"
-  echo "quit"
-) | ftp -i -v 184.72.41.135
+echo "Upload ${CDLFILE} to AGUA"
 
 # Cleanup
 mv ${CDLFILE} ${LHR}/archive/
